@@ -1,47 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:student_statemanagment/Constant/constant_colors.dart';
-import 'package:student_statemanagment/Database/student_data_base.dart';
-import 'package:student_statemanagment/Model/student_model.dart';
+import 'package:student_statemanagment/Getx/student_controller.dart';
 import 'package:student_statemanagment/screens/add_student.dart';
 import 'package:student_statemanagment/screens/screen_login.dart';
 import 'package:student_statemanagment/widgets/grid_view.dart';
 import 'package:student_statemanagment/widgets/list_view.dart';
 
-enum ViewType { list, grid }
-
-class ScreenHome extends StatefulWidget {
+class ScreenHome extends StatelessWidget {
   const ScreenHome({super.key});
 
   @override
-  State<ScreenHome> createState() => _ScreenHomeState();
-}
-
-class _ScreenHomeState extends State<ScreenHome> {
-  ViewType _currentView = ViewType.list;
-  List<StudentModel> _filteredStudentList = [];
-  String _searchQuery = '';
-  List<StudentModel> students = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStudents();
-  }
-
-  Future<void> _loadStudents() async {
-    final value = await getAllStudents();
-    if (value != null) {
-      setState(() {
-        students = value;
-        _filteredStudentList =
-            students; // Assign fetched students to filtered list
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final StudentController studentController = Get.put(StudentController());
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Student Management',
@@ -51,7 +24,7 @@ class _ScreenHomeState extends State<ScreenHome> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: logout,
+            onPressed: () => logout(context),
           ),
         ],
       ),
@@ -76,75 +49,66 @@ class _ScreenHomeState extends State<ScreenHome> {
                   ),
                   style: const TextStyle(color: Colors.white),
                   onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                      _filteredStudentList = students
-                          .where((student) => student.name
-                              .toLowerCase()
-                              .contains(_searchQuery.toLowerCase()))
-                          .toList();
-                    });
+                    studentController.searchStudents(value);
                   },
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    DropdownButton<ViewType>(
-                      value: _currentView,
-                      onChanged: (ViewType? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _currentView = newValue;
-                          });
-                        }
-                      },
-                      items: ViewType.values.map((ViewType type) {
-                        return DropdownMenuItem<ViewType>(
-                          value: type,
-                          child: Row(
-                            children: [
-                              Icon(
-                                type == ViewType.list
-                                    ? Icons.list
-                                    : Icons.grid_view,
-                                color: Colors.white,
+                Obx(() => Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        DropdownButton<ViewType>(
+                          value: studentController.currentView.value,
+                          onChanged: (ViewType? newValue) {
+                            if (newValue != null) {
+                              studentController.changeView(newValue);
+                            }
+                          },
+                          items: ViewType.values.map((ViewType type) {
+                            return DropdownMenuItem<ViewType>(
+                              value: type,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    type == ViewType.list
+                                        ? Icons.list
+                                        : Icons.grid_view,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    type == ViewType.list ? 'List' : 'Grid',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                type == ViewType.list ? 'List' : 'Grid',
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
-                      dropdownColor:
-                          ConstantColors.getColor(ColorOptions.mainColor),
-                      icon: const Icon(Icons.arrow_drop_down,
-                          color: Colors.white),
-                      underline: Container(),
-                    ),
-                  ],
-                ),
+                            );
+                          }).toList(),
+                          dropdownColor:
+                              ConstantColors.getColor(ColorOptions.mainColor),
+                          icon: const Icon(Icons.arrow_drop_down,
+                              color: Colors.white),
+                          underline: Container(),
+                        ),
+                      ],
+                    )),
               ],
             ),
           ),
-          _filteredStudentList.isEmpty
-              ? Center(child: Text('No students'))
-              : Expanded(
-                  child: _currentView == ViewType.list
-                      ? StudentListView(
-                          filteredStudentList: _filteredStudentList)
-                      : GridViewStudents(
-                          filteredStudentList: _filteredStudentList),
-                ),
+          Expanded(
+            child: Obx(() => studentController.filteredStudents.isEmpty
+                ? const Center(child: Text('No students'))
+                : studentController.currentView.value == ViewType.list
+                    ? StudentListView(
+                        filteredStudentList: studentController.filteredStudents)
+                    : GridViewStudents(
+                        filteredStudentList:
+                            studentController.filteredStudents)),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-              context, MaterialPageRoute(builder: (ctx) => const AddStudent()));
+          Get.to(() => AddStudent());
         },
         backgroundColor: ConstantColors.getColor(ColorOptions.mainColor),
         child: const Icon(Icons.add),
@@ -152,13 +116,10 @@ class _ScreenHomeState extends State<ScreenHome> {
     );
   }
 
-  Future<void> logout() async {
+  Future<void> logout(BuildContext context) async {
     final sharedPref = await SharedPreferences.getInstance();
     await sharedPref.setBool('userlogged', false);
     await sharedPref.setBool('signed', false);
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (ctx) => const ScreenLogin()),
-      (route) => false,
-    );
+    Get.offAll(() => const ScreenLogin());
   }
 }

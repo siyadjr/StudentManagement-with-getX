@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get_navigation/src/root/get_material_app.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:student_statemanagment/Model/student_model.dart';
 import 'package:student_statemanagment/Model/user_model.dart';
@@ -23,7 +24,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return const GetMaterialApp(
       title: 'Student Management',
       debugShowCheckedModeBanner: false,
       home: SplashScreen(),

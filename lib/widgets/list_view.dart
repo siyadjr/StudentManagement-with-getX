@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
 import 'package:student_statemanagment/Constant/constant_colors.dart';
-import 'package:student_statemanagment/Database/student_data_base.dart';
+
+import 'package:student_statemanagment/Getx/student_controller.dart';
 import 'package:student_statemanagment/Model/student_model.dart';
+import 'package:student_statemanagment/screens/edit_student.dart';
 import 'package:student_statemanagment/screens/student_details.dart';
 
 class StudentListView extends StatelessWidget {
@@ -38,8 +42,15 @@ class StudentListView extends StatelessWidget {
             trailing: PopupMenuButton<String>(
               onSelected: (value) {
                 if (value == 'edit') {
+                  Navigator.push(
+                      context,
+                      (MaterialPageRoute(
+                          builder: (ctx) => EditStudents(
+                              student: _filteredStudentList[index]))));
                 } else if (value == 'delete') {
-                  deleteStudent(_filteredStudentList[index]);
+                  final controller = Get.find<StudentController>();
+                  controller.deleteStudent(_filteredStudentList[index]);
+                  controller.loadStudents();
                 }
               },
               itemBuilder: (BuildContext context) => [
